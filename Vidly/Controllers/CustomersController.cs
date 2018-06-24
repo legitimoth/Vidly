@@ -7,74 +7,97 @@ using Vidly.ViewModels;
 
 namespace Vidly.Controllers
 {
-    public class CustomersController : Controller
-    {
-        private ApplicationDbContext _context;
+	public class CustomersController : Controller
+	{
+		private ApplicationDbContext _context;
 
-        public CustomersController()
-        {
-            _context = new ApplicationDbContext();
-        }
+		public CustomersController()
+		{
+			_context = new ApplicationDbContext();
+		}
 
-        protected override void Dispose(bool disposing)
-        {
-            _context.Dispose();
-        }
+		protected override void Dispose(bool disposing)
+		{
+			_context.Dispose();
+		}
 
-        public ActionResult Index()
-        {
-            var customers = this._context.Customers.Include(c => c.MembershipType).ToList();
+		public ActionResult Index()
+		{
+			var customers = this._context.Customers.Include(c => c.MembershipType).ToList();
 
-            return View(customers);
-        }
+			return View(customers);
+		}
 
-        public ActionResult Details(int id)
-        {
-            var customer = _context.Customers.Include(c => c.MembershipType).SingleOrDefault(c => c.Id == id);
+		public ActionResult Details(int id)
+		{
+			var customer = _context.Customers.Include(c => c.MembershipType).SingleOrDefault(c => c.Id == id);
 
-            if (customer == null)
-            {
-                return HttpNotFound();
-            }
-            return View(customer);
-        }
+			if (customer == null)
+			{
+				return HttpNotFound();
+			}
+			return View(customer);
+		}
 
-        public ActionResult New()
-        {
-            var MembershipType = _context.MembershipType.ToList();
-            var ViewModel = new CustomerFormViewModel
-            {
-                MembershipTypes = MembershipType
-            };
+		public ActionResult New() 
+		{
+			var MembershipType = _context.MembershipType.ToList();
+			var ViewModel = new CustomerFormViewModel
+			{
+				Customer = new Customer(),
+				MembershipTypes = MembershipType
+			};
 
-            return View("CustomerForm", ViewModel);
-        }
+			return View("CustomerForm", ViewModel);
+		}
 
-        [HttpPost]
-        public ActionResult Create(Customer customer)
-        {
-            _context.Customers.Add(customer);
-            _context.SaveChanges();
-            return RedirectToAction("Index", "Customers");
-        }
+		[HttpPost]
+		[ValidateAntiForgeryToken]
+		public ActionResult Save(Customer customer)
+		{
+			if (!ModelState.IsValid)
+			{
+				var viewModel = new CustomerFormViewModel
+				{
+					Customer = customer,
+					MembershipTypes = _context.MembershipType.ToList()
+				};
+				return View("CustomerForm", viewModel);
+			}
+			if (customer.Id == 0)
+			{
+				_context.Customers.Add(customer);
 
-        public ActionResult Edit(int id)
-        {
-            var customer = _context.Customers.SingleOrDefault(c => c.Id == id);
+			}
+			else
+			{
+				var customerInDb = _context.Customers.Single( c => c.Id == customer.Id);
+				customerInDb.Name = customer.Name;
+				customerInDb.Birthdate = customer.Birthdate;
+				customerInDb.MembershipTypeId = customer.MembershipTypeId;
+				customerInDb.IsSubscribedToNewsletter = customer.IsSubscribedToNewsletter;
+			}
+			_context.SaveChanges();
+			return RedirectToAction("Index", "Customers");
+		}
 
-            if (customer == null)
-            {
-                return HttpNotFound();
-            }
+		public ActionResult Edit(int id)
+		{
+			var customer = _context.Customers.SingleOrDefault(c => c.Id == id);
 
-            var viewModel = new CustomerFormViewModel
-            {
-                Customer = customer,
-                MembershipTypes = _context.MembershipType.ToList()
-            };
+			if (customer == null)
+			{
+				return HttpNotFound();
+			}
 
-            return View("CustomerForm", viewModel);
-        }
+			var viewModel = new CustomerFormViewModel
+			{
+				Customer = customer,
+				MembershipTypes = _context.MembershipType.ToList()
+			};
 
-    }
+			return View("CustomerForm", viewModel);
+		}
+
+	}
 }
